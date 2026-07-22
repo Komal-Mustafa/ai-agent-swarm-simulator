@@ -192,7 +192,7 @@
             <div class="w-2 h-2 rounded-full bg-violet-400 animate-ping"></div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <i data-lucide="message-square" class="w-4 h-4 text-violet-400"></i>
-              Claude AI Agentic Analyst
+              Antigravity AI Analyst
             </h3>
           </div>
           <span class="text-[10px] text-violet-300 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/30">Copilot Active</span>
@@ -566,7 +566,7 @@
       });
     }
 
-    // 3. CLAUDE AI AGENT COPILOT CHAT ENGINE
+    // 3. ANTIGRAVITY AI AGENT COPILOT CHAT ENGINE
     function handleChatKey(e) {
       if (e.key === 'Enter') submitAgentChat();
     }
@@ -589,7 +589,7 @@
       const screen = document.getElementById('agentChatScreen');
       const div = document.createElement('div');
       div.className = `p-2 rounded-lg border text-xs leading-relaxed ${isUser ? 'bg-slate-900 border-slate-800 text-white text-right self-end' : 'bg-violet-950/20 border-violet-900/40 text-slate-300'}`;
-      div.innerHTML = isUser ? `👤 ${msg}` : `🤖 **Claude:** ${msg}`;
+      div.innerHTML = isUser ? `👤 ${msg}` : `🤖 **Antigravity:** ${msg}`;
       screen.appendChild(div);
       screen.scrollTop = screen.scrollHeight;
     }
