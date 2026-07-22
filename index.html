@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwarmPulse — Multi-Agent AI Financial Trading Swarm</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: "#050716",
+            surface: "#0a0e28",
+            card: "#11173d",
+            border: "#1d285c",
+            violet: { 400: "#c084fc", 500: "#a855f7", 600: "#9333ea" }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Chart.js & PapaParse -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    body { background-color: #050716; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+    
+    /* 60 FPS HTML5 Canvas Animated Swarm Network */
+    #swarmCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.65;
+    }
+
+    /* Glassmorphism Dark Terminal Dock */
+    .glass-terminal {
+      background: rgba(10, 14, 40, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      position: relative;
+      z-index: 10;
+    }
+    .glass-card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .glass-card-hover:hover {
+      border-color: rgba(192, 132, 252, 0.6);
+      box-shadow: 0 12px 40px rgba(168, 85, 247, 0.25);
+      transform: translateY(-2px);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #050716; }
+    ::-webkit-scrollbar-thumb { background: #1d285c; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-violet-500 selection:text-white">
+
+  <!-- Interactive 60 FPS Swarm Node Mesh Background -->
+  <canvas id="swarmCanvas"></canvas>
+
+  <!-- Header -->
+  <header class="border-b border-violet-500/30 bg-[#05081e]/90 backdrop-blur-md sticky top-0 z-40 px-6 py-4 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-xl shadow-lg shadow-violet-500/20">
+          <i data-lucide="cpu" class="w-6 h-6 text-white animate-pulse"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold tracking-tight text-white">
+              SwarmPulse <span class="text-violet-400 font-mono text-xs px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/30">AI Agent Swarm Terminal</span>
+            </h1>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Autonomous Agent Utility Curves Active
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Vectorized Expected Return Utility $U(a) = \mathbb{E}[R] + \beta S - \gamma \text{Var}(R)$ & Swarm Price Discovery Simulation
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex flex-wrap items-center gap-3">
+        
+        <!-- Swarm Size Slider -->
+        <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs z-30">
+          <span class="text-slate-400">Swarm Size:</span>
+          <select id="agentCountSelect" onchange="updateSimulation()" class="bg-transparent text-violet-300 font-medium focus:outline-none cursor-pointer">
+            <option value="50" selected class="bg-slate-900">50 AI Agents</option>
+            <option value="150" class="bg-slate-900">150 AI Agents</option>
+            <option value="300" class="bg-slate-900">300 AI Agents</option>
+          </select>
+        </div>
+
+        <!-- Download Sample CSV -->
+        <button onclick="downloadSampleCsv()" class="flex items-center gap-1.5 text-xs font-medium text-slate-300 bg-slate-800/80 hover:bg-slate-800 hover:text-white px-3 py-2 rounded-lg border border-slate-700/60 transition-colors z-30">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-violet-400"></i>
+          Sample CSV
+        </button>
+
+        <!-- Upload CSV Button -->
+        <button onclick="openModal()" class="flex items-center gap-2 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-4 py-2 rounded-lg shadow-lg shadow-violet-600/30 transition-all active:scale-[0.98] z-30">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          Upload News CSV
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Grid Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+
+    <!-- Status Notice -->
+    <div id="statusNotice" class="hidden p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs flex items-center gap-2 z-30 relative">
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+      <span id="statusNoticeText">News Headlines Parsed Successfully!</span>
+    </div>
+
+    <!-- KPI Metrics Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-terminal rounded-xl p-5 border border-violet-500/30">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Final Simulated Price</span>
+        <div id="kpiFinalPrice" class="text-2xl font-extrabold text-white mt-1">$100.00</div>
+        <span id="kpiNewsCount" class="text-xs text-violet-400">0 Headlines Ingested</span>
+      </div>
+      <div class="glass-terminal rounded-xl p-5 border border-violet-500/30">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Overall Sentiment</span>
+        <div id="kpiSentiment" class="text-2xl font-extrabold text-violet-400 mt-1">0.00</div>
+        <span class="text-xs text-slate-400">Weighted NLP Value</span>
+      </div>
+      <div class="glass-terminal rounded-xl p-5 border-emerald-500/30">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Peak Market Price</span>
+        <div id="kpiPeakPrice" class="text-2xl font-extrabold text-emerald-400 mt-1">$100.00</div>
+        <span class="text-xs text-slate-400">Highest Trading Value</span>
+      </div>
+      <div class="glass-terminal rounded-xl p-5 border-rose-500/30">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Trough Market Price</span>
+        <div id="kpiTroughPrice" class="text-2xl font-extrabold text-rose-400 mt-1">$100.00</div>
+        <span class="text-xs text-slate-400">Lowest Trading Value</span>
+      </div>
+    </div>
+
+    <!-- Center Interactive Visuals -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left: Sentiment Price Discovery Line Chart (7 Cols) -->
+      <div class="lg:col-span-7 glass-terminal rounded-xl p-5 border border-slate-800 flex flex-col space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="line-chart" class="w-4 h-4 text-violet-400"></i>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Simulated Market Price Discovery Trajectory ($)</h3>
+          </div>
+          <span class="text-[10px] text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">Swarm Impact Curve</span>
+        </div>
+        
+        <div class="h-64 relative w-full">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Right: Swarm Order Type Mix Chart (5 Cols) -->
+      <div class="lg:col-span-5 glass-terminal rounded-xl p-5 border border-slate-800 flex flex-col">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-violet-400"></i>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Aggregate Swarm Decision Profile</h3>
+          </div>
+          <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Decision Distribution</span>
+        </div>
+        <div class="h-60 relative w-full flex items-center justify-center">
+          <canvas id="decisionPieChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bloomberg News sentiment feed Datagrid -->
+    <div class="glass-terminal rounded-xl border border-slate-800 p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div class="relative w-full sm:w-72">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="searchInput" type="text" onkeyup="filterTable()" placeholder="Search News Feed..." class="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500">
+        </div>
+        <button onclick="exportToCsv()" class="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/30 rounded-lg text-xs font-semibold z-30">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          Export Swarm Simulation CSV
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 font-semibold bg-slate-900/50">
+              <th class="p-3">News ID</th>
+              <th class="p-3">Headline</th>
+              <th class="p-3 text-right">Sentiment Score</th>
+              <th class="p-3 text-right">Buy Orders</th>
+              <th class="p-3 text-right">Sell Orders</th>
+              <th class="p-3 text-right">Hold Orders</th>
+              <th class="p-3 text-right">Net Flow Imbalance</th>
+              <th class="p-3 text-right">Simulated Price</th>
+            </tr>
+          </thead>
+          <tbody id="swarmTableBody" class="divide-y divide-slate-800/60 font-mono">
+            <!-- Injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+    <div class="bg-[#0a0e28] border border-violet-500/30 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-violet-500/10 rounded-lg text-violet-400 border border-violet-500/20">
+            <i data-lucide="upload" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">Upload Custom Market News CSV</h2>
+            <p class="text-xs text-slate-400">Non-blocking async parser for Bloomberg/Twitter feeds</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-xl p-8 text-center cursor-pointer hover:border-violet-500" onclick="document.getElementById('csvFileInput').click()">
+        <input type="file" id="csvFileInput" accept=".csv,.txt" class="hidden" onchange="handleFileSelect(event)">
+        <i data-lucide="cpu" class="w-8 h-8 text-violet-400 mx-auto mb-2 animate-bounce"></i>
+        <p id="fileLabel" class="text-sm font-semibold text-slate-200">Click to browse or drop News CSV file</p>
+        <p class="text-xs text-slate-500 mt-1">Auto-matches news_id, headline, impact_weight</p>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-3">
+        <button onclick="closeModal()" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button id="btnSubmitCsv" onclick="processUploadedCsv()" class="px-5 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-lg shadow-lg flex items-center gap-2">
+          <span>Run Swarm Simulation</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Animated Swarm Background Canvas Logic & Simulation -->
+  <script>
+    // 1. HTML5 Canvas 60 FPS Animated AI Swarm Network
+    const canvas = document.getElementById('swarmCanvas');
+    const ctx = canvas.getContext('2d');
+    let swarmNodes = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class SwarmNode {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 1.8;
+        this.vy = (Math.random() - 0.5) * 1.8;
+        this.radius = Math.random() * 4 + 3;
+        this.color = Math.random() > 0.5 ? 'rgba(168, 85, 247, 0.5)' : 'rgba(99, 102, 241, 0.5)';
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset
+      }
+    }
+
+    function initSwarm() {
+      swarmNodes = [];
+      const count = Math.min(80, Math.floor(canvas.width / 18));
+      for (let i = 0; i < count; i++) {
+        swarmNodes.push(new SwarmNode());
+      }
+    }
+    initSwarm();
+
+    function animateSwarm() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      swarmNodes.forEach(n => {
+        n.update();
+        n.draw();
+      });
+
+      // Connect channels
+      for (let i = 0; i < swarmNodes.length; i++) {
+        for (let j = i + 1; j < swarmNodes.length; j++) {
+          const dx = swarmNodes[i].x - swarmNodes[j].x;
+          const dy = swarmNodes[i].y - swarmNodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 140) {
+            ctx.strokeStyle = `rgba(168, 85, 247, ${0.18 * (1 - dist / 140)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(swarmNodes[i].x, swarmNodes[i].y);
+            ctx.lineTo(swarmNodes[j].x, swarmNodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateSwarm);
+    }
+    animateSwarm();
+
+    // 2. Swarm simulation logic
+    let rawNews = [
+      { news_id: "NEWS-001", headline: "Al Rajhi Bank reports 15% profit growth in Q2 approved reports", impact_weight: 1.2 },
+      { news_id: "NEWS-002", headline: "SAMA announces open banking sandbox expansion for strategic FinTech", impact_weight: 1.5 },
+      { news_id: "NEWS-003", headline: "Regulatory fine warning issued to regional lending firms", impact_weight: 0.8 },
+      { news_id: "NEWS-004", headline: "Dubai DIFC sees surge in quantitative hedge fund registrations", impact_weight: 1.4 },
+      { news_id: "NEWS-005", headline: "Regional inflation index drops to target range following policy review", impact_weight: 1.1 }
+    ];
+
+    let processedTicks = [];
+    let priceChartInstance = null;
+    let decisionPieInstance = null;
+
+    // Financial sentiment keywords lexicon
+    const BULLISH_KEYWORDS = ["surge", "growth", "approved", "bullish", "profit", "gain", "upgrade", "outperform", "acquisition", "strategic"];
+    const BEARISH_KEYWORDS = ["drop", "decline", "rejected", "bearish", "loss", "crash", "downgrade", "deficit", "regulatory", "fine", "investigation"];
+
+    function calculateTextSentiment(text) {
+      const clean_text = text.toLowerCase();
+      let bullish_count = 0;
+      let bearish_count = 0;
+      
+      BULLISH_KEYWORDS.forEach(w => { if (clean_text.includes(w)) bullish_count++; });
+      BEARISH_KEYWORDS.forEach(w => { if (clean_text.includes(w)) bearish_count++; });
+
+      const total = bullish_count + bearish_count;
+      if (total === 0) return 0.0;
+      return (bullish_count - bearish_count) / total;
+    }
+
+    function processSwarmData(newsList) {
+      const numAgents = parseInt(document.getElementById('agentCountSelect').value);
+      const impactMultiplier = 0.02;
+
+      // Seed parameters for agents deterministically
+      const baseline_r = [];
+      const risk_aversion = [];
+      const sensitivities = [];
+
+      for (let a = 0; a < numAgents; a++) {
+        baseline_r.push(0.005 + (a % 10) * 0.002);
+        risk_aversion.push(0.2 + (a % 5) * 0.25);
+        sensitivities.push(0.6 + (a % 8) * 0.18);
+      }
+
+      let currentPrice = 100.0;
+      const ticks = [];
+
+      newsList.forEach((n, idx) => {
+        const sentiment = calculateTextSentiment(n.headline) * n.impact_weight;
+
+        let buyCount = 0;
+        let sellCount = 0;
+        let holdCount = 0;
+
+        for (let a = 0; a < numAgents; a++) {
+          const u_buy = baseline_r[a] + (sensitivities[a] * sentiment) - (risk_aversion[a] * 0.05);
+          const u_sell = -baseline_r[a] - (sensitivities[a] * sentiment) - (risk_aversion[a] * 0.05);
+
+          if (u_buy > u_sell && u_buy > 0.0) buyCount++;
+          else if (u_sell > u_buy && u_sell > 0.0) sellCount++;
+          else holdCount++;
+        }
+
+        const netFlow = buyCount - sellCount;
+        currentPrice = currentPrice * (1.0 + (impactMultiplier * netFlow) + (idx % 2 === 0 ? 0.001 : -0.001));
+
+        ticks.push({
+          ...n,
+          sentiment_score: Math.round(sentiment * 100) / 100,
+          simulated_price: Math.round(currentPrice * 100) / 100,
+          buy_orders_count: buyCount,
+          sell_orders_count: sellCount,
+          hold_orders_count: holdCount,
+          net_decision_flow: netFlow
+        });
+      });
+
+      return ticks;
+    }
+
+    function renderApp() {
+      processedTicks = processSwarmData(rawNews);
+
+      let finalPrice = 100.0, peakPrice = 100.0, troughPrice = 100.0, sentimentSum = 0;
+      let totalBuys = 0, totalSells = 0, totalHolds = 0;
+
+      processedTicks.forEach((t, i) => {
+        finalPrice = t.simulated_price;
+        if (t.simulated_price > peakPrice) peakPrice = t.simulated_price;
+        if (t.simulated_price < troughPrice) troughPrice = t.simulated_price;
+        sentimentSum += t.sentiment_score;
+
+        totalBuys += t.buy_orders_count;
+        totalSells += t.sell_orders_count;
+        totalHolds += t.hold_orders_count;
+      });
+
+      document.getElementById('kpiFinalPrice').innerText = `$${finalPrice.toFixed(2)}`;
+      document.getElementById('kpiNewsCount').innerText = `${processedTicks.length} Headlines Ingested`;
+      document.getElementById('kpiSentiment').innerText = (sentimentSum / processedTicks.length).toFixed(2);
+      document.getElementById('kpiPeakPrice').innerText = `$${peakPrice.toFixed(2)}`;
+      document.getElementById('kpiTroughPrice').innerText = `$${troughPrice.toFixed(2)}`;
+
+      renderPriceChart();
+      renderDecisionPieChart(totalBuys, totalSells, totalHolds);
+      renderTable();
+      lucide.createIcons();
+    }
+
+    function renderPriceChart() {
+      const labels = processedTicks.map((t, i) => `Step ${i + 1}`);
+      const priceData = processedTicks.map(t => t.simulated_price);
+
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      if (priceChartInstance) priceChartInstance.destroy();
+
+      priceChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Simulated Price ($)',
+            data: priceData,
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168, 85, 247, 0.12)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1d285c' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function renderDecisionPieChart(buys, sells, holds) {
+      const ctx = document.getElementById('decisionPieChart').getContext('2d');
+      if (decisionPieInstance) decisionPieInstance.destroy();
+
+      decisionPieInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Buy Swarm Orders', 'Sell Swarm Orders', 'Hold Swarm Orders'],
+          datasets: [{
+            data: [buys, sells, holds],
+            backgroundColor: ['#10b981', '#f43f5e', '#6366f1'],
+            borderColor: '#0a0e28',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
+        }
+      });
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('swarmTableBody');
+      tbody.innerHTML = '';
+
+      processedTicks.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/60 transition-colors";
+
+        tr.innerHTML = `
+          <td class="p-3 font-bold text-violet-400">${t.news_id}</td>
+          <td class="p-3 text-slate-300 max-w-xs truncate">${t.headline}</td>
+          <td class="p-3 text-right font-bold ${t.sentiment_score >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${t.sentiment_score}</td>
+          <td class="p-3 text-right text-emerald-400">${t.buy_orders_count}</td>
+          <td class="p-3 text-right text-rose-400">${t.sell_orders_count}</td>
+          <td class="p-3 text-right text-slate-400">${t.hold_orders_count}</td>
+          <td class="p-3 text-right font-bold ${t.net_decision_flow >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${t.net_decision_flow}</td>
+          <td class="p-3 text-right font-bold text-violet-300">$${t.simulated_price.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModal() { document.getElementById('uploadModal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('uploadModal').classList.add('hidden'); }
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        selectedFileObject = e.target.files[0];
+        document.getElementById('fileLabel').innerText = `Selected: ${selectedFileObject.name}`;
+      }
+    }
+
+    function parseNum(val, defaultVal) {
+      if (val === undefined || val === null || val === '') return defaultVal;
+      const str = String(val).replace(/[^0-9.-]/g, '');
+      const num = parseFloat(str);
+      return isNaN(num) ? defaultVal : num;
+    }
+
+    function processUploadedCsv() {
+      if (!selectedFileObject) { alert('Please select a News CSV file'); return; }
+      
+      const btn = document.getElementById('btnSubmitCsv');
+      btn.innerHTML = `<span class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span><span>Running Swarm...</span>`;
+      btn.disabled = true;
+
+      setTimeout(() => {
+        Papa.parse(selectedFileObject, {
+          header: true, dynamicTyping: true, skipEmptyLines: true,
+          complete: function(results) {
+            if (results.data && results.data.length > 0) {
+              try {
+                const parsed = [];
+                const rowsToIngest = results.data.slice(0, 500);
+
+                rowsToIngest.forEach((row, i) => {
+                  const norm = {};
+                  Object.keys(row).forEach(k => { if (k) norm[k.toLowerCase().trim().replace(/[^a-z0-9]/g, '_')] = row[k]; });
+                  function getRawVal(aliases) {
+                    for (let a of aliases) {
+                      const nk = a.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                      if (norm[nk] !== undefined && norm[nk] !== null && norm[nk] !== '') {
+                        return norm[nk];
+                      }
+                    }
+                    return undefined;
+                  }
+
+                  parsed.push({
+                    news_id: String(getRawVal(['news_id', 'id', 'news']) || `NEWS-${i+1}`),
+                    headline: String(getRawVal(['headline', 'headline_text', 'title', 'text']) || `Market Headline ${i+1}`),
+                    impact_weight: parseNum(getRawVal(['impact_weight', 'importance_factor', 'weight']), 1.0)
+                  });
+                });
+
+                rawNews = parsed;
+                closeModal();
+                
+                const notice = document.getElementById('statusNotice');
+                document.getElementById('statusNoticeText').innerText = `Successfully simulated swarm order flow on ${parsed.length} headlines!`;
+                notice.classList.remove('hidden');
+                setTimeout(() => notice.classList.add('hidden'), 5000);
+
+                renderApp();
+              } catch (err) {
+                alert(`Error parsing News CSV: ${err.message}`);
+              } finally {
+                btn.innerHTML = `<span>Run Swarm Simulation</span>`;
+                btn.disabled = false;
+              }
+            }
+          }
+        });
+      }, 50);
+    }
+
+    function updateSimulation() { renderApp(); }
+
+    function downloadSampleCsv() {
+      const csvStr = "news_id,headline,impact_weight\n" +
+                     "NEWS-001,Al Rajhi Bank reports 15% profit growth in Q2 approved reports,1.2\n" +
+                     "NEWS-002,SAMA announces open banking sandbox expansion for strategic FinTech,1.5\n" +
+                     "NEWS-003,Regulatory fine warning issued to regional lending firms,0.8\n";
+      const blob = new Blob([csvStr], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'sample_market_news.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function exportToCsv() {
+      let csv = "News ID,Headline,Sentiment Score,Buy Orders,Sell Orders,Hold Orders,Net Decision Flow,Simulated Price\n";
+      processedTicks.forEach(t => {
+        csv += `"${t.news_id}","${t.headline}",${t.sentiment_score},${t.buy_orders_count},${t.sell_orders_count},${t.hold_orders_count},${t.net_decision_flow},${t.simulated_price}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'swarm_simulation_report.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function filterTable() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const rows = document.querySelectorAll('#swarmTableBody tr');
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    window.onload = function() { renderApp(); };
+  </script>
+</body>
+</html>
